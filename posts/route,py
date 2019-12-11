@@ -1,0 +1,62 @@
+from flask import Blueprint, Response, jsonify, request
+from people_methods import get_people, to_json
+
+posts = Blueprint("posts", __name__)
+
+
+@posts.route('/posts')
+def get_posts():
+    ppl = get_people()
+    userid = request.args.get('userid')
+    if userid is not None:
+        return jsonify([p for p in ppl['posts'] if p['userid'] == userid])
+    return jsonify(ppl['posts'])
+
+
+@posts.route('/people', methods=['POST'])
+def post_posts():
+    ppl = get_people()
+    post = request.get_json()
+    post_id = len(ppl['posts'])
+    ppl['posts'].append({"id": post_id, **post})
+    to_json(ppl)
+    return jsonify({"id": post_id})
+
+
+@posts.route("/posts/<id>")
+def get_post(id):
+    ppl = get_people()
+    try:
+        return ppl['posts'][int(id)]
+    except IndexError:
+        return Response('Not found', status=404)
+
+
+@posts.route("/posts/<id>", methods=['DELETE'])
+def delete_post(id):
+    ppl = get_people()
+    try:
+        ppl['posts'][int(id)] = None
+        to_json(ppl)
+        return Response(status=204)
+    except IndexError:
+        return Response('Not Found', status=404)
+
+
+@posts.route('/posts/<id>', methods=['PATCH'])
+def update_posts(id):
+    ppl = get_people()
+    try:
+        ppl['posts'][int(id)].update(request.get_json())
+        to_json(ppl)
+        return Response(status=204)
+    except IndexError:
+        return Response("Not Found", status=404)
+
+
+@posts.route('/people/<int:id>/posts')
+def get_someones_posts(id):
+    ppl = get_people()
+    if ppl['people'][id]:
+        return jsonify([p for p in ppl['posts'] if p['userid'] == id])
+    return Response("Not found", status=404)
